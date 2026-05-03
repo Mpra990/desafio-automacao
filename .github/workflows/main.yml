@@ -13,6 +13,6 @@ jobs:
         run: |
           pip install pytest requests selenium webdriver-manager
       - name: Run API Tests
-        run: pytest api_testing/tests/
+        run: pytest api_testing/
       - name: Run Web Tests
-        run: pytest web_testing/tests/
+        run: pytest web_testing/
