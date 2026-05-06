@@ -1,47 +1,50 @@
-import pytest
 import time
+import pytest
 from selenium.webdriver.common.by import By
+from web_testing.pages.login_page import LoginPage
 
-def test_fluxo_compra_completo(driver):
-    # 1. Acessar o site oficial do desafio
+# --- TESTE 1: CAMINHO NEGATIVO (SENHA INCORRETA) ---
+def test_login_senha_invalida(driver):
+    """Valida se o sistema bloqueia acesso com senha errada"""
+    login = LoginPage(driver)
     driver.get("https://www.saucedemo.com/")
-    time.sleep(2) # Pausa para o público ver a tela de carregamento
     
-    # 2. Realizar o Login
-    # Preenchendo o campo de usuário
-    driver.find_element(By.ID, "user-name").send_keys("standard_user")
-    time.sleep(1) # Pausa para mostrar a digitação
+    login.realizar_login("standard_user", "senha_qualquer")
     
-    # Preenchendo o campo de senha
-    driver.find_element(By.ID, "password").send_keys("secret_sauce")
-    time.sleep(1) # Pausa para mostrar a digitação
-    
-    # Clicando no botão de Login
-    driver.find_element(By.ID, "login-button").click()
-    
-    # PAUSA CRÍTICA: Aguarda 4 segundos para garantir que o Chrome ignore 
-    # o alerta de "senha vazada" e carregue a vitrine de produtos.
-    time.sleep(4) 
-    
-    # 3. Adicionar a Mochila (Backpack) ao Carrinho
-    # Este passo falhou anteriormente porque a tela de alerta bloqueou o clique.
+    # Validação da mensagem de erro
+    msg_erro = login.obter_mensagem_erro()
+    assert "Username and password do not match" in msg_erro
+    time.sleep(2)
+
+# --- TESTE 2: FUNCIONALIDADE DE REMOÇÃO (CARRINHO) ---
+def test_remover_produto_do_carrinho(driver):
+    """Valida se o usuário consegue desistir de um item no carrinho"""
+    login = LoginPage(driver)
+    driver.get("https://www.saucedemo.com/")
+    login.realizar_login("standard_user", "secret_sauce")
+
+    # Adiciona e depois remove
     driver.find_element(By.ID, "add-to-cart-sauce-labs-backpack").click()
-    print("Produto adicionado com sucesso!")
-    time.sleep(2) # Pausa para ver o botão mudar de 'Add to cart' para 'Remove'
-    
-    # 4. Abrir a página do Carrinho clicando no ícone superior
-    driver.find_element(By.CLASS_NAME, "shopping_cart_link").click()
-    time.sleep(2) # Pausa para o público ver o item listado no carrinho
-    
-    # 5. Remover o item para limpar o teste
-    # Isso demonstra que o script consegue interagir com elementos dinâmicos.
     driver.find_element(By.ID, "remove-sauce-labs-backpack").click()
-    print("Produto removido para limpar o ambiente.")
-    time.sleep(2) # Pausa para observar a lista ficando vazia
     
-    # 6. Validação final: o contador de itens (badge) não deve existir
-    itens_no_carrinho = driver.find_elements(By.CLASS_NAME, "shopping_cart_badge")
-    assert len(itens_no_carrinho) == 0
+    # Valida se o badge do carrinho sumiu (está vazio)
+    carrinho_vazio = driver.find_elements(By.CLASS_NAME, "shopping_cart_badge")
+    assert len(carrinho_vazio) == 0
+    time.sleep(2)
+
+# --- TESTE 3: VALIDAÇÃO DE FILTROS (ORDENAÇÃO) ---
+def test_ordenar_produtos_por_preco(driver):
+    """Valida se o filtro de 'Preço: Menor para Maior' funciona"""
+    login = LoginPage(driver)
+    driver.get("https://www.saucedemo.com/")
+    login.realizar_login("standard_user", "secret_sauce")
+
+    # Seleciona o filtro
+    seletor = driver.find_element(By.CLASS_NAME, "product_sort_container")
+    seletor.send_keys("Price (low to high)")
     
-    print("\n✅ Sucesso: O fluxo foi executado e validado visualmente!")
-    time.sleep(1)
+    # Pega o preço do primeiro produto da lista
+    primeiro_preco = driver.find_element(By.CLASS_NAME, "inventory_item_price").text
+    # O item mais barato da SauceDemo é $7.99
+    assert "$7.99" in primeiro_preco
+    time.sleep(2)
